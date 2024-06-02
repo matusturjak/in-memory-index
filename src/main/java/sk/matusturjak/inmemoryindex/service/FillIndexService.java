@@ -19,6 +19,12 @@ public class FillIndexService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    private AppIndexes appIndexes;
+
+    public FillIndexService(AppIndexes appIndexes) {
+        this.appIndexes = appIndexes;
+    }
+
     @Transactional
     public Map<String, TwoThreeTree> fillIndexes(String idFieldName, List<String> fieldNames, String entityClazzName) {
         Map<String, TwoThreeTree> indexes = new HashMap<>();
@@ -46,6 +52,7 @@ public class FillIndexService {
             }
         });
 
+        appIndexes.addEntityIndexes(idFieldName, entityClazzName, indexes);
         return indexes;
     }
 }

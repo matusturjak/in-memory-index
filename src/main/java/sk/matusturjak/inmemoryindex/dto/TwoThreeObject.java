@@ -11,6 +11,10 @@ public class TwoThreeObject implements Comparable<TwoThreeObject> {
         this.atr = atr;
     }
 
+    public TwoThreeObject(Comparable atr) {
+        this.atr = atr;
+    }
+
     public Comparable getId() {
         return id;
     }
@@ -29,11 +33,6 @@ public class TwoThreeObject implements Comparable<TwoThreeObject> {
 
     @Override
     public int compareTo(TwoThreeObject o) {
-        int compareByAtr = this.atr.compareTo(o.atr);
-
-        if (compareByAtr == 0) {
-            return this.id.compareTo(o.id);
-        }
-        return compareByAtr;
+        return this.atr.compareTo(o.atr);
     }
 }

@@ -67,17 +67,17 @@ public class FieldIndexProcessor extends AbstractProcessor {
 
             String packageName = "sk.matusturjak.inmemoryindex"; // TODO
             String entityName = processingEnv.getElementUtils().getPackageOf(classElement).toString() + "." + classElement.getSimpleName();
-            String generatedClassName = classElement.getSimpleName() + "IndexImpl";
+            String generatedClassName = classElement.getSimpleName() + "IndexService";
 
             log.info(fieldElements.toString());
 
-            String idFieldName = "\"" + classElement
+            String idFieldName = classElement
                 .getEnclosedElements()
                 .stream()
                 .filter(field -> field.getKind().isField() && field.getAnnotation(Id.class) != null)
                 .findAny()
                 .orElseThrow(() -> new RuntimeException("Id field not found."))
-                .getSimpleName().toString() + "\"";
+                .getSimpleName().toString();
 
             String fieldNames = "new LinkedList<String>(Arrays.asList(" + fieldElements.stream()
                 .filter(field -> field.getAnnotation(Id.class) == null)
@@ -88,11 +88,13 @@ public class FieldIndexProcessor extends AbstractProcessor {
             model.append("import jakarta.persistence.EntityManager").append(";\n");
             model.append("import jakarta.persistence.PersistenceContext").append(";\n");
             model.append("import org.springframework.stereotype.Service").append(";\n");
-            model.append("import structure.TwoThreeTree").append(";\n"); // TODO sk.matusturjak
+            model.append("import sk.matusturjak.tree.TwoThreeTree").append(";\n");
+            model.append("import sk.matusturjak.inmemoryindex.dto.TwoThreeObject").append(";\n");
             model.append("import sk.matusturjak.inmemoryindex.service.FillIndexService").append(";\n");
             model.append("import java.util.Arrays").append(";\n");
             model.append("import java.util.List").append(";\n");
             model.append("import java.util.LinkedList").append(";\n");
+            model.append("import java.util.stream.Collectors").append(";\n");
             model.append("import java.util.Map").append(";\n\n");
 
             model.append("@Service\n");
@@ -111,7 +113,7 @@ public class FieldIndexProcessor extends AbstractProcessor {
             );
             model.append("\t\tthis.fillIndexService = fillIndexService;\n");
             model.append(
-                String.format("\t\tthis.indexes = this.fillIndexService.fillIndexes(%s, %s, %s);\n", idFieldName, fieldNames, "\"" + entityName + "\"")
+                String.format("\t\tthis.indexes = this.fillIndexService.fillIndexes(%s, %s, %s);\n", "\"" + idFieldName + "\"", fieldNames, "\"" + entityName + "\"")
             );
             model.append("\t}\n\n");
 
@@ -119,15 +121,17 @@ public class FieldIndexProcessor extends AbstractProcessor {
                 String fieldName = field.getSimpleName().toString();
                 String fieldType = field.asType().toString();
 
-                String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+                String getterName = "getDocumentBy" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
 
-//                String searchInTree = ""
-//                String selectToDB = String.format(
-//                    "\t\tString select = \"select obj from %s where %s in(%s)\";\n",
-//                    entityName, "obj." + fieldName,
-//                );
+                String searchInTree = String.format(
+                    "\t\tTwoThreeObject foundedObject = (TwoThreeObject) this.indexes.get(\"%s\").searchData(new TwoThreeObject(objParam));\n" +
+                    "\t\tComparable objectId = foundedObject.getId();\n" +
+                    "\t\tString select = \"select obj from %s obj where obj.%s = '\" + objectId + \"'\";\n" +
+                    "\t\treturn entityManager.createQuery(select,%s.class).getSingleResult();",
+                    fieldName, entityName, idFieldName, entityName
+                );
                 model.append(
-                    String.format("\tpublic List<%s> %s(%s objParam) { \n\t\treturn null;\n\t}\n\n", entityName, getterName, fieldType)
+                    String.format("\tpublic %s %s(%s objParam) { \n" + searchInTree + "\n\t}\n\n", entityName, getterName, fieldType)
                 );
             });
             model.append("}\n");
